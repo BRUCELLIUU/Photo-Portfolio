@@ -21,6 +21,7 @@ body {
   background: var(--bg); color: var(--fg); line-height: 1.7;
   -webkit-font-smoothing: antialiased; overflow-x: hidden;
 }
+#particleCanvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
@@ -36,6 +37,7 @@ body {
 }
 .logo { font-size: 19px; font-weight: 600; letter-spacing: 0.05em; }
 .logo i { color: var(--accent); font-style: normal; }
+.logo-cn { font-size: 13px; font-weight: 400; color: var(--fg-muted); letter-spacing: 0.08em; margin-left: 4px; }
 .main-nav { display: flex; gap: 2px; }
 .main-nav button {
   background: none; border: none; color: var(--fg-dim); padding: 8px 20px;
@@ -53,6 +55,10 @@ body {
 .hero h1 { font-size: 56px; font-weight: 200; letter-spacing: 0.08em; margin-bottom: 20px; }
 .hero h1 span { color: var(--accent); font-weight: 300; }
 .hero .subtitle { font-size: 16px; color: var(--fg-muted); letter-spacing: 0.1em; max-width: 500px; margin: 0 auto; }
+.hero .watermark {
+  font-size: 15px; color: var(--accent); letter-spacing: 0.15em; margin-top: 8px;
+  opacity: 0.9; user-select: none;
+}
 .hero .stats { margin-top: 40px; display: flex; justify-content: center; gap: 48px; }
 .hero .stat-item { text-align: center; }
 .hero .stat-num { font-size: 32px; font-weight: 300; color: var(--accent); }
@@ -325,13 +331,61 @@ body {
 .verify-card .verify-actions { display: flex; gap: 10px; }
 .verify-card .verify-actions button { flex: 1; }
 .verify-card .verify-err { font-size: 11px; color: #e06c6c; margin-top: 10px; min-height: 16px; }
+
+/* Audio controls */
+.audio-ctrl { position: fixed; bottom: 32px; left: 32px; z-index: 300; display: flex; align-items: center; gap: 10px; }
+.audio-toggle {
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(201,169,110,0.3);
+  background: rgba(8,8,8,0.85); backdrop-filter: blur(12px); color: var(--accent);
+  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.3s ease; line-height: 1;
+}
+.audio-toggle:hover { border-color: var(--accent); box-shadow: 0 0 16px rgba(201,169,110,0.15); }
+.audio-toggle.muted { color: var(--fg-muted); border-color: rgba(255,255,255,0.1); }
+.audio-panel {
+  display: flex; align-items: center; gap: 8px; opacity: 0; transform: translateX(-8px);
+  transition: opacity 0.3s ease, transform 0.3s ease; pointer-events: none;
+}
+.audio-panel.open { opacity: 1; transform: translateX(0); pointer-events: auto; }
+.audio-slider {
+  -webkit-appearance: none; width: 80px; height: 3px; border-radius: 2px;
+  background: rgba(201,169,110,0.25); outline: none; cursor: pointer;
+}
+.audio-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--accent); cursor: pointer;
+}
+.audio-vol { font-size: 10px; color: var(--accent); letter-spacing: 0.04em; min-width: 30px; }
+.audio-prev, .audio-next {
+  background: none; border: none; color: var(--fg-dim); cursor: pointer;
+  font-size: 11px; padding: 2px 4px; transition: color 0.2s; line-height: 1;
+}
+.audio-prev:hover, .audio-next:hover { color: var(--accent); }
+.audio-track {
+  font-size: 10px; color: var(--fg-dim); letter-spacing: 0.03em;
+  min-width: 80px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 </style>
 </head>
 <body>
+<canvas id="particleCanvas"></canvas>
+<audio id="bgm" loop preload="auto"></audio>
+
+<!-- Audio control -->
+<div class="audio-ctrl" id="audioCtrl">
+  <button class="audio-toggle" id="audioToggle" title="播放/暂停">&#9835;</button>
+  <div class="audio-panel" id="audioPanel">
+    <button class="audio-prev" id="audioPrev" title="上一首">&#9664;</button>
+    <span class="audio-track" id="audioTrack">bgm</span>
+    <button class="audio-next" id="audioNext" title="下一首">&#9654;</button>
+    <input type="range" class="audio-slider" id="audioSlider" min="0" max="100" value="30" title="音量">
+    <span class="audio-vol" id="audioVol">30%</span>
+  </div>
+</div>
 
 <header class="site-header">
   <div class="header-inner">
-    <div class="logo"><i>&#9670;</i> PhotoFolio</div>
+    <div class="logo"><i>&#9670;</i> PhotoFolio <span class="logo-cn">摄影集</span></div>
     <nav class="main-nav" id="categoryNav">
       <button class="active" data-cat="all">全部作品</button>
       <button data-cat="静物摄影">静物摄影</button>
@@ -345,6 +399,7 @@ body {
 <section class="hero">
   <h1>光<span>影</span>集</h1>
   <p class="subtitle">每帧皆是对世界的凝视<br>光影之间，记录瞬间</p>
+  <p class="watermark">Fayebru</p>
   <div class="stats" id="heroStats"></div>
 </section>
 
@@ -449,7 +504,7 @@ body {
 let IMAGE_META = window.IMAGE_META || {};  // loaded from image_meta.js
 
 
-const BASE_IMAGE_DATA = {"静物摄影": ["静物/1.png", "静物/2.png", "静物/3.jpg", "静物/4.png", "静物/5.JPG", "静物/6.JPG", "静物/7.JPG", "静物/8.jpg", "静物/9.jpg", "静物/10.jpg", "静物/11.jpg", "静物/12.jpg", "静物/13.jpg", "静物/14.jpg", "静物/15.jpg", "静物/16.jpg", "静物/17.png", "静物/18.png", "静物/19.jpg"], "风光摄影": ["风光/5.png", "风光/6.jpg", "风光/7.jpg", "风光/8.jpg", "风光/9.jpg", "风光/10.jpg", "风光/12.jpg", "风光/13.jpg", "风光/14.jpg", "风光/16.png", "风光/17.png", "风光/18.png", "风光/19.png", "风光/20.jpg", "风光/21.png", "风光/24.JPG", "风光/27.JPG", "风光/SDIM0042.JPG", "风光/SDIM0078.JPG", "风光/SDIM0099.JPG", "风光/月亮1.png", "风光/月亮2.png", "人文/4.jpg", "人文/7.png", "人文/8.png"], "建筑摄影": ["风光/1.png", "风光/2.png", "风光/3.jpg", "风光/4.jpg", "风光/22.jpg", "风光/23.png", "风光/25.jpg", "风光/26.jpg", "风光/15.png"], "人文纪实": ["人文/1.jpg", "人文/2.jpg", "人文/3.png", "人文/5.png", "人文/6.jpg", "人文/9.jpg", "人文/10.JPG", "人文/11.jpg", "人文/12.jpg", "人文/13.jpg", "人文/14.jpg", "人文/15.jpg", "风光/11.jpg"]};
+const BASE_IMAGE_DATA = {"静物摄影": ["静物/1.png", "静物/2.png", "静物/3.jpg", "静物/4.png", "静物/5.JPG", "静物/6.JPG", "静物/7.JPG", "静物/8.jpg", "静物/9.jpg", "静物/10.jpg", "静物/11.jpg", "静物/12.jpg", "静物/13.jpg", "静物/14.jpg", "静物/15.jpg", "静物/16.jpg", "静物/17.png", "静物/18.png", "静物/19.jpg"], "风光摄影": ["风光/5.png", "风光/6.jpg", "风光/7.jpg", "风光/8.jpg", "风光/9.jpg", "风光/10.jpg", "风光/12.jpg", "风光/13.jpg", "风光/14.jpg", "风光/16.png", "风光/17.png", "风光/18.png", "风光/19.png", "风光/20.png", "风光/21.png", "风光/24.JPG", "风光/27.JPG", "风光/SDIM0042.JPG", "风光/SDIM0078.JPG", "风光/SDIM0099.JPG", "风光/月亮1.png", "风光/月亮2.png", "人文/4.jpg", "人文/7.png", "人文/8.png"], "建筑摄影": ["风光/1.png", "风光/2.png", "风光/3.jpg", "风光/4.jpg", "风光/22.jpg", "风光/23.png", "风光/25.jpg", "风光/26.jpg", "风光/15.png"], "人文纪实": ["人文/1.jpg", "人文/2.jpg", "人文/3.png", "人文/5.png", "人文/6.jpg", "人文/9.jpg", "人文/10.JPG", "人文/11.jpg", "人文/12.jpg", "人文/13.jpg", "人文/14.jpg", "人文/15.jpg", "风光/11.jpg"]};
 const CAT_ORDER = ["静物摄影", "风光摄影", "建筑摄影", "人文纪实"];
 const CAT_DESC = {"风光摄影": "山川湖海，草木星辰。以自然景观为拍摄对象，展现天地之大美与细节之精微。", "建筑摄影": "塔楼庭院，钢骨玻璃。以建筑及其构件为拍摄对象，呈现结构与空间的形式语言。", "人文纪实": "街头巷尾，民俗百态。记录人的活动与文化印记，在日常中捕捉不日常的瞬间。", "静物摄影": "雕塑装置，器物标本。以人造之物为拍摄对象，在构图中赋予器物以叙事。"};
 
@@ -1010,6 +1065,118 @@ verifyInput.addEventListener('keydown', e => {
 });
 
 renderGallery('all');
+
+// ── Particle effect ──
+(function() {
+  const c = document.getElementById('particleCanvas');
+  const ctx = c.getContext('2d');
+  const N = 100;
+  let w, h, particles = [];
+  function resize() { w = c.width = window.innerWidth; h = c.height = window.innerHeight; }
+  for (let i = 0; i < N; i++) {
+    const baseO = Math.random() * 0.4 + 0.1;
+    const phase = Math.random() * Math.PI * 2;
+    particles.push({
+      x: Math.random(), y: Math.random(),
+      vx: (Math.random() - 0.5) * 0.05,
+      vy: (Math.random() - 0.5) * 0.05,
+      r: Math.random() * 0.9 + 0.3,
+      baseO, phase,
+      pulseSpeed: 0.4 + Math.random() * 0.8
+    });
+  }
+  resize(); window.addEventListener('resize', resize);
+  let t = 0;
+  function draw(ts) {
+    const dt = Math.min((ts - t) / 1000, 0.1); t = ts;
+    ctx.clearRect(0, 0, w, h);
+    for (const p of particles) {
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.x < 0) p.x = 1; if (p.x > 1) p.x = 0;
+      if (p.y < 0) p.y = 1; if (p.y > 1) p.y = 0;
+      const o = p.baseO + Math.sin(ts * 0.001 * p.pulseSpeed + p.phase) * 0.25;
+      ctx.beginPath();
+      ctx.arc(p.x * w, p.y * h, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(201,169,110,${Math.max(0.03, o)})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+
+// ── Background music ──
+(function() {
+  const bgm = document.getElementById('bgm');
+  const audioToggle = document.getElementById('audioToggle');
+  const audioPanel = document.getElementById('audioPanel');
+  const ctrl = document.getElementById('audioCtrl');
+  const audioSlider = document.getElementById('audioSlider');
+  const audioVol = document.getElementById('audioVol');
+  const audioTrack = document.getElementById('audioTrack');
+  const audioPrev = document.getElementById('audioPrev');
+  const audioNext = document.getElementById('audioNext');
+
+  const tracks = [
+    { name: 'Timeline', file: 'bgm/Timeline 1.mp3' },
+    { name: 'Ragtime', file: 'bgm/Ragtime_Receiver.mp3' },
+    { name: 'Saxophone', file: 'bgm/bgm.mp3' }
+  ];
+  let trackIdx = 0, playing = false;
+
+  function loadTrack(idx) {
+    trackIdx = idx;
+    const wasPlaying = playing && !bgm.paused;
+    bgm.src = tracks[idx].file;
+    audioTrack.textContent = tracks[idx].name;
+    bgm.load();
+    bgm.volume = audioSlider.value / 100;
+    if (wasPlaying) {
+      bgm.play().then(() => {
+        audioToggle.textContent = '♪';
+        audioToggle.classList.remove('muted');
+      }).catch(() => {});
+    }
+  }
+  loadTrack(0);
+
+  audioToggle.addEventListener('click', () => {
+    if (playing && !bgm.paused) {
+      bgm.pause();
+    } else {
+      bgm.play().then(() => {
+        audioToggle.textContent = '♪';
+        audioToggle.classList.remove('muted');
+      }).catch(() => {});
+    }
+  });
+
+  bgm.addEventListener('play', () => { playing = true; audioToggle.textContent = '♪'; audioToggle.classList.remove('muted'); });
+  bgm.addEventListener('pause', () => { playing = false; audioToggle.textContent = '♫'; audioToggle.classList.add('muted'); });
+  bgm.addEventListener('ended', () => { /* loop handles this */ });
+
+  audioPrev.addEventListener('click', (e) => { e.stopPropagation(); loadTrack((trackIdx - 1 + tracks.length) % tracks.length); });
+  audioNext.addEventListener('click', (e) => { e.stopPropagation(); loadTrack((trackIdx + 1) % tracks.length); });
+
+  audioSlider.addEventListener('input', () => {
+    bgm.volume = audioSlider.value / 100;
+    audioVol.textContent = audioSlider.value + '%';
+  });
+
+  audioToggle.addEventListener('mouseenter', () => audioPanel.classList.add('open'));
+  ctrl.addEventListener('mouseleave', () => audioPanel.classList.remove('open'));
+
+  // Autoplay with delay
+  setTimeout(() => {
+    bgm.play().then(() => {
+      playing = true;
+      audioToggle.textContent = '♪';
+      audioToggle.classList.remove('muted');
+    }).catch(() => {
+      audioToggle.title = '点击播放';
+    });
+  }, 2500);
+})();
 </script>
 </body>
 </html>

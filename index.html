@@ -82,9 +82,14 @@ body {
   transition: opacity 0.5s ease, transform 0.5s ease, box-shadow 0.35s ease;
 }
 .masonry-item.visible { opacity: 1; transform: translateY(0); }
-.masonry-item img { width: 100%; display: block; }
+.masonry-item .masonry-img { width: 100%; display: block; opacity: 0; transition: opacity 0.45s ease, transform 0.35s ease; }
+.masonry-item .masonry-img.loaded { opacity: 1; }
+.masonry-item .masonry-placeholder {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: rgba(255,255,255,0.15); letter-spacing: 0.06em;
+}
 .masonry-item:hover { transform: translateY(-3px) !important; box-shadow: 0 16px 48px rgba(0,0,0,0.55); }
-.masonry-item:hover img { transform: scale(1.04); }
+.masonry-item:hover .masonry-img { transform: scale(1.04); }
 .masonry-item .item-overlay {
   position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.5));
   opacity: 0; transition: opacity var(--t);
@@ -287,7 +292,7 @@ body {
 .del-mode .masonry-item .del-btn { display: flex; }
 .del-mode .masonry-item { cursor: default; }
 .del-mode .masonry-item:hover { transform: translateY(0) !important; box-shadow: none; }
-.del-mode .masonry-item:hover img { transform: scale(1); }
+.del-mode .masonry-item:hover .masonry-img { transform: scale(1); }
 .fab-trash {
   bottom: 96px; background: rgba(255,255,255,0.08); color: var(--fg-dim);
   box-shadow: none; font-size: 18px;
@@ -503,23 +508,39 @@ function renderGallery(filter) {
     if (CAT_DESC[cat]) html += `<p class="sec-desc">${CAT_DESC[cat]}</p>`;
     html += `<p class="sec-meta">共 ${imgs.length} 张作品</p></div><div class="masonry">`;
     imgs.forEach((src,i) => {
-      html += `<div class="masonry-item" data-cat="${cat}" data-index="${i}" data-src="${src}"><img src="${src}" alt="${cat}" loading="lazy"><div class="item-overlay"><span class="item-index">${i+1}</span></div><button class="del-btn" title="删除此图片">&times;</button></div>`;
+      // Get dominant color for placeholder
+      let bg = 'var(--bg-card)';
+      const fileName = src.split('/').pop();
+      const metaList = IMAGE_META[cat];
+      if (metaList) {
+        const meta = metaList.find(m => m.file === fileName);
+        if (meta && meta.colors && meta.colors.length) bg = meta.colors[0].hex;
+      }
+      html += `<div class="masonry-item" data-cat="${cat}" data-index="${i}" data-src="${src}" style="background:${bg}"><img class="masonry-img" data-src="${src}" alt="${cat}"><div class="masonry-placeholder">${i+1}</div><div class="item-overlay"><span class="item-index">${i+1}</span></div><button class="del-btn" title="删除此图片">&times;</button></div>`;
     });
     html += '</div></div>';
   });
   root.innerHTML = html;
 
-  // Simple visibility observer — only adds CSS class, no DOM manipulation
+  // IntersectionObserver: loads image src + adds visible class
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const item = entry.target;
+        const img = item.querySelector('.masonry-img');
+        if (img && img.dataset.src) {
+          img.src = img.dataset.src;
+          img.removeAttribute('data-src');
+          img.addEventListener('load', () => { img.classList.add('loaded'); }, { once: true });
+          // Fallback: if already cached, load event may not fire
+          if (img.complete) img.classList.add('loaded');
+        }
         item.style.transitionDelay = (parseInt(item.dataset.index||0) % 20) * 0.04 + 's';
         item.classList.add('visible');
         observer.unobserve(item);
       }
     });
-  }, { rootMargin: '200px' });
+  }, { rootMargin: '400px' });
 
   root.querySelectorAll('.masonry-item').forEach(item => observer.observe(item));
 

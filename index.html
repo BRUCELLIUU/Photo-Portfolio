@@ -373,7 +373,7 @@ body {
 
 <!-- Audio control -->
 <div class="audio-ctrl" id="audioCtrl">
-  <button class="audio-toggle" id="audioToggle" title="播放/暂停">&#9835;</button>
+  <button class="audio-toggle muted" id="audioToggle" title="点击播放">&#9834;</button>
   <div class="audio-panel" id="audioPanel">
     <button class="audio-prev" id="audioPrev" title="上一首">&#9664;</button>
     <span class="audio-track" id="audioTrack">bgm</span>
@@ -1166,16 +1166,18 @@ renderGallery('all');
   audioToggle.addEventListener('mouseenter', () => audioPanel.classList.add('open'));
   ctrl.addEventListener('mouseleave', () => audioPanel.classList.remove('open'));
 
-  // Autoplay with delay
-  setTimeout(() => {
+  // Autoplay + user-interaction fallback
+  function tryPlay() {
+    if (playing && !bgm.paused) return;
     bgm.play().then(() => {
       playing = true;
       audioToggle.textContent = '♪';
       audioToggle.classList.remove('muted');
-    }).catch(() => {
-      audioToggle.title = '点击播放';
-    });
-  }, 2500);
+    }).catch(() => {});
+  }
+  tryPlay();
+  document.addEventListener('click', tryPlay, { once: true });
+  document.addEventListener('scroll', tryPlay, { once: true });
 })();
 </script>
 </body>

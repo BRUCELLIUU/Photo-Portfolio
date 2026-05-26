@@ -369,7 +369,7 @@ body {
 </head>
 <body>
 <canvas id="particleCanvas"></canvas>
-<audio id="bgm" loop preload="auto"></audio>
+<audio id="bgm" loop preload="auto" muted autoplay></audio>
 
 <!-- Audio control -->
 <div class="audio-ctrl" id="audioCtrl">
@@ -1141,6 +1141,10 @@ renderGallery('all');
   loadTrack(0);
 
   audioToggle.addEventListener('click', () => {
+    if (muted) {
+      unmuteBgm();
+      return;
+    }
     if (playing && !bgm.paused) {
       bgm.pause();
     } else {
@@ -1150,10 +1154,6 @@ renderGallery('all');
       }).catch(() => {});
     }
   });
-
-  bgm.addEventListener('play', () => { playing = true; audioToggle.textContent = '♪'; audioToggle.classList.remove('muted'); });
-  bgm.addEventListener('pause', () => { playing = false; audioToggle.textContent = '♫'; audioToggle.classList.add('muted'); });
-  bgm.addEventListener('ended', () => { /* loop handles this */ });
 
   audioPrev.addEventListener('click', (e) => { e.stopPropagation(); loadTrack((trackIdx - 1 + tracks.length) % tracks.length); });
   audioNext.addEventListener('click', (e) => { e.stopPropagation(); loadTrack((trackIdx + 1) % tracks.length); });
@@ -1166,18 +1166,30 @@ renderGallery('all');
   audioToggle.addEventListener('mouseenter', () => audioPanel.classList.add('open'));
   ctrl.addEventListener('mouseleave', () => audioPanel.classList.remove('open'));
 
-  // Autoplay + user-interaction fallback
-  function tryPlay() {
-    if (playing && !bgm.paused) return;
-    bgm.play().then(() => {
+  // Autoplay: starts muted (browser allows), unmutes on first interaction
+  let muted = true;
+  function unmuteBgm() {
+    if (!muted) return;
+    bgm.muted = false;
+    muted = false;
+    playing = true;
+    audioToggle.textContent = '♪';
+    audioToggle.classList.remove('muted');
+  }
+  document.addEventListener('click', unmuteBgm, { once: true });
+  document.addEventListener('scroll', unmuteBgm, { once: true });
+  document.addEventListener('touchstart', unmuteBgm, { once: true });
+  document.addEventListener('keydown', unmuteBgm, { once: true });
+
+  // Track play state
+  bgm.addEventListener('play', () => {
+    if (!muted) {
       playing = true;
       audioToggle.textContent = '♪';
       audioToggle.classList.remove('muted');
-    }).catch(() => {});
-  }
-  tryPlay();
-  document.addEventListener('click', tryPlay, { once: true });
-  document.addEventListener('scroll', tryPlay, { once: true });
+    }
+  });
+  bgm.addEventListener('pause', () => { playing = false; audioToggle.textContent = '♫'; audioToggle.classList.add('muted'); });
 })();
 </script>
 </body>

@@ -554,27 +554,54 @@ function renderGallery(filter) {
   }
   root.innerHTML = html;
 
-  // IntersectionObserver: loads image src + adds visible class
+  // IntersectionObserver for below-fold lazy loading
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
-        const item = entry.target;
-        const img = item.querySelector('.masonry-img');
-        if (img && img.dataset.src) {
+        loadItemImage(entry.target);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { rootMargin: '300px' });
+
+  const allItems = root.querySelectorAll('.masonry-item');
+  
+  // Load visible items immediately with staggered delay (avoids observer timing issues)
+  function loadItemImage(item) {
+    const img = item.querySelector('.masonry-img');
+    if (img && img.dataset.src) {
+      img.src = img.dataset.src;
+      img.removeAttribute('data-src');
+      img.addEventListener('load', () => { img.classList.add('loaded'); }, { once: true });
+      if (img.complete) img.classList.add('loaded');
+    }
+    item.style.transitionDelay = (parseInt(item.dataset.index||0) % 10) * 0.06 + 's';
+    item.classList.add('visible');
+  }
+
+  // Check which items are in viewport and load them
+  const vh = window.innerHeight;
+  let visibleCount = 0;
+  allItems.forEach(item => {
+    const rect = item.getBoundingClientRect();
+    if (rect.top < vh + 600 && rect.bottom > -200) {
+      visibleCount++;
+      item.classList.add('visible');
+      item.style.transitionDelay = (parseInt(item.dataset.index||0) % 8) * 0.08 + 's';
+      const img = item.querySelector('.masonry-img');
+      if (img && img.dataset.src) {
+        // Stagger loading to avoid connection saturation
+        setTimeout(() => {
           img.src = img.dataset.src;
           img.removeAttribute('data-src');
           img.addEventListener('load', () => { img.classList.add('loaded'); }, { once: true });
-          // Fallback: if already cached, load event may not fire
           if (img.complete) img.classList.add('loaded');
-        }
-        item.style.transitionDelay = (parseInt(item.dataset.index||0) % 20) * 0.04 + 's';
-        item.classList.add('visible');
-        observer.unobserve(item);
+        }, (parseInt(item.dataset.index||0) % 6) * 80);
       }
-    });
-  }, { rootMargin: '400px' });
-
-  root.querySelectorAll('.masonry-item').forEach(item => observer.observe(item));
+    } else {
+      observer.observe(item);
+    }
+  });
 
   let total = 0; catOrder.forEach(c => { total += (imageData[c]||[]).length; });
   document.getElementById('heroStats').innerHTML = `<div class="stat-item"><div class="stat-num">${catOrder.length}</div><div class="stat-label">板块</div></div><div class="stat-item"><div class="stat-num">${total}</div><div class="stat-label">张作品</div></div>`;

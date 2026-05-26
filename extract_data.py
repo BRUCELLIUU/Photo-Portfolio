@@ -1,5 +1,6 @@
 """Extract image metadata - with XMP support for PNG files."""
-import json, os, sys, struct, xml.etree.ElementTree as ET
+import json, os, sys, struct, traceback, io
+import xml.etree.ElementTree as ET
 from PIL import Image
 
 BASE = r"C:\Users\25055\Desktop\个人摄影作品筛选"
@@ -50,7 +51,8 @@ def extract_xmp_from_png(fpath):
                             if v is not None: result[an]=v
                     return result if result else None
                 if ctype=='IEND': break
-    except: pass
+    except Exception:
+        sys.stderr.write(f"\n[XMP parse error] {fpath}: {traceback.format_exc()}\n")
     return None
 
 def extract_exif(img):
@@ -68,7 +70,8 @@ def extract_exif(img):
                 elif tn=='FocalLength': r['FocalLength']=float(v)
                 elif tn=='ISOSpeedRatings': r['ISO']=int(v[0]) if isinstance(v,(list,tuple)) else int(v)
                 else: r[tn]=str(v) if v is not None else ''
-            except: pass
+            except Exception:
+                sys.stderr.write(f"\n[EXIF value parse error] tag={tn} value={v}: {traceback.format_exc()}\n")
     return r if r else None
 
 def extract_colors(img):
@@ -125,12 +128,14 @@ def fmt_exif(exif):
         except: rows.append([l,str(v)])
     return rows
 
-data={}; ok=0; err=0
+data={}; ok=0; err=0; dir_stats={}
 for cat in CATS:
     cd=os.path.join(BASE,cat)
     if not os.path.isdir(cd): continue
     data[cat]=[]
     files=sorted([f for f in os.listdir(cd) if f.lower().endswith(('.jpg','.jpeg','.png'))])
+    dir_stats[cat]=len(files)
+    print(f"\n[{cat}] 目录：{len(files)} 张图片")
     for fn in files:
         fp=os.path.join(cd,fn)
         sys.stdout.write(f"\r{cat}/{fn:<30}"); sys.stdout.flush()
@@ -150,21 +155,33 @@ for cat in CATS:
                                 if '/' in str(v):
                                     n,d=v.split('/'); xmp[k]=float(n)/float(d)
                                 else: xmp[k]=float(v)
-                            except: pass
+                            except Exception:
+                                sys.stderr.write(f"\n[XMP float conv error] {fp}: {k}={xmp.get(k)}: {traceback.format_exc()}\n")
                     if 'ISOSpeedRatings' in xmp:
                         try: xmp['ISO']=int(xmp['ISOSpeedRatings'])
-                        except: pass
+                        except Exception:
+                            sys.stderr.write(f"\n[XMP ISO conv error] {fp}: ISOSpeedRatings={xmp.get('ISOSpeedRatings')}: {traceback.format_exc()}\n")
                     exif=xmp
             colors=extract_colors(img)
             tonal=extract_tonal(img)
             data[cat].append({"file":fn,"colors":colors,"tonal":tonal,"exif":fmt_exif(exif)})
             img.close(); ok+=1
         except Exception as e:
-            sys.stdout.write(f"\r{cat}/{fn:<30} ERROR:{e}\n")
+            sys.stderr.write(f"\n[ERROR] {cat}/{fn}: {e}\n")
+            sys.stderr.write(traceback.format_exc())
             data[cat].append({"file":fn,"colors":[{"r":80,"g":80,"b":80,"hex":"#505050"}]*3,"tonal":{"tonal":"—","contrast":"—","avgLum":0,"histBins":[0]*32},"exif":[]})
             err+=1
 
-print(f"\nDone: {ok} ok, {err} err")
+total_scanned = sum(dir_stats.values())
+print(f"\nDone: 目录 {dir_stats} → 共 {total_scanned} 张, {ok} ok, {err} err")
 with open(OUT,"w",encoding="utf-8") as f:
     json.dump(data,f,ensure_ascii=False,indent=2)
 print(f"Written to {OUT}")
+
+# Also write image_meta.js for <script> tag loading (file:// compatible)
+js_out = os.path.join(BASE, "image_meta.js")
+with open(js_out, "w", encoding="utf-8") as f:
+    f.write("window.IMAGE_META = ")
+    json.dump(data, f, ensure_ascii=False)
+    f.write(";\n")
+print(f"Written to {js_out}")

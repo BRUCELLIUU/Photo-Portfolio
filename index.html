@@ -84,6 +84,7 @@ body {
 .masonry-item.visible { opacity: 1; transform: translateY(0); }
 .masonry-item .masonry-img { width: 100%; display: block; opacity: 0; transition: opacity 0.45s ease, transform 0.35s ease; }
 .masonry-item .masonry-img.loaded { opacity: 1; }
+.masonry-item .masonry-img.loaded ~ .masonry-placeholder { display: none; }
 .masonry-item .masonry-placeholder {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   font-size: 11px; color: rgba(255,255,255,0.15); letter-spacing: 0.06em;
@@ -473,6 +474,7 @@ function loadDeleted() {
     const s = localStorage.getItem('photofolio_deleted');
     if (s) deletedPaths = JSON.parse(s);
   } catch(e) { deletedPaths = []; }
+  if (!Array.isArray(deletedPaths)) deletedPaths = [];
   // Filter deleted paths out of base image data
   for (const cat of catOrder) {
     const base = BASE_IMAGE_DATA[cat] || [];
@@ -485,14 +487,33 @@ function saveDeleted() {
 function loadCustom() {
   try {
     const s = localStorage.getItem('photofolio_custom');
-    if (s) { const d = JSON.parse(s); if (d.cats) catOrder=[...new Set([...CAT_ORDER,...d.cats])]; if (d.images) for (const [c,u] of Object.entries(d.images)) { if (!imageData[c]) imageData[c]=[]; imageData[c]=[...imageData[c],...u]; } }
+    if (s) {
+      const d = JSON.parse(s);
+      // Only keep custom categories that are NOT already in CAT_ORDER
+      if (d.cats && Array.isArray(d.cats)) {
+        const validCats = d.cats.filter(c => !CAT_ORDER.includes(c));
+        if (validCats.length) catOrder = [...new Set([...CAT_ORDER, ...validCats])];
+      }
+      // Only load images for categories that exist in current catOrder
+      if (d.images && typeof d.images === 'object') {
+        for (const [c, u] of Object.entries(d.images)) {
+          if (!catOrder.includes(c)) continue;
+          if (!imageData[c]) imageData[c] = [];
+          if (Array.isArray(u)) imageData[c] = [...imageData[c], ...u];
+        }
+      }
+    }
   } catch(e) {}
 }
 function saveCustom() {
   const cc = catOrder.filter(c => !CAT_ORDER.includes(c));
   const ci = {};
-  for (const c of catOrder) { const b = BASE_IMAGE_DATA[c]||[]; const a = imageData[c]||[]; if (a.length>b.length) ci[c]=a.slice(b.length); }
-  localStorage.setItem('photofolio_custom', JSON.stringify({cats:cc,images:ci}));
+  for (const c of catOrder) {
+    const b = BASE_IMAGE_DATA[c] || [];
+    const a = imageData[c] || [];
+    if (a.length > b.length) ci[c] = a.slice(b.length);
+  }
+  localStorage.setItem('photofolio_custom', JSON.stringify({ cats: cc, images: ci }));
 }
 loadDeleted();
 loadCustom();

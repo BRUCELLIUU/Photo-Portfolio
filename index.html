@@ -1113,13 +1113,12 @@ verifyInput.addEventListener('keydown', e => {
 
 renderGallery('all');
 
-// ── Loading toast: hide once page is ready ──
+// ── Loading toast: show ~5s, max 12s ──
 (function() {
   const toast = document.getElementById('loadingToast');
   function hide() { toast.classList.add('hidden'); }
-  if (document.readyState === 'complete') { setTimeout(hide, 1200); }
-  else { window.addEventListener('load', () => setTimeout(hide, 1200)); }
-  setTimeout(hide, 8000); // absolute fallback
+  setTimeout(hide, 5000);
+  setTimeout(hide, 12000);
 })();
 
 // ── Particle effect ──

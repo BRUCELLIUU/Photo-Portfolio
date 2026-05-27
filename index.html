@@ -81,6 +81,41 @@ body {
 @media (max-width: 768px)  { .masonry { columns: 2; column-gap: 10px; } }
 @media (max-width: 480px)  { .masonry { columns: 1; } }
 
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+  .header-inner { flex-wrap: wrap; height: auto; padding: 12px 16px; gap: 8px; }
+  .main-nav { flex-wrap: wrap; justify-content: center; gap: 1px; }
+  .main-nav button { padding: 6px 12px; font-size: 12px; }
+  .hero { padding: 160px 20px 80px; }
+  .hero h1 { font-size: 36px; }
+  .section-block { padding: 0 16px; }
+  .sec-title { font-size: 24px; }
+  .site-footer { padding: 40px 16px; }
+  .fab { bottom: 24px; right: 24px; width: 44px; height: 44px; font-size: 20px; }
+  .fab-trash { bottom: 80px; }
+  .audio-ctrl { bottom: 24px; left: 24px; }
+  .delete-bar { font-size: 11px; padding: 6px 12px; }
+}
+@media (max-width: 480px) {
+  .header-inner { padding: 10px 12px; gap: 6px; }
+  .logo { font-size: 16px; }
+  .logo-cn { font-size: 13px; }
+  .main-nav button { padding: 5px 8px; font-size: 11px; border-radius: 6px; }
+  .hero { padding: 140px 16px 60px; }
+  .hero h1 { font-size: 28px; }
+  .hero .subtitle { font-size: 14px; }
+  .hero .stats { gap: 24px; }
+  .hero .stat-num { font-size: 24px; }
+  .section-block { padding: 0 10px; margin-bottom: 80px; }
+  .sec-header { margin-bottom: 36px; }
+  .sec-title { font-size: 20px; }
+  .sec-desc { font-size: 13px; }
+  .masonry-item { margin-bottom: 10px; }
+  .audio-ctrl { bottom: 20px; left: 20px; }
+  .fab { bottom: 20px; right: 20px; width: 40px; height: 40px; }
+  .fab-trash { bottom: 70px; }
+}
+
 .masonry-item {
   break-inside: avoid; margin-bottom: 16px; border-radius: var(--radius-lg);
   overflow: hidden; cursor: pointer; position: relative; background: var(--bg-card);
@@ -378,8 +413,8 @@ body {
     <button class="audio-prev" id="audioPrev" title="上一首">&#9664;</button>
     <span class="audio-track" id="audioTrack">Timeline</span>
     <button class="audio-next" id="audioNext" title="下一首">&#9654;</button>
-    <input type="range" class="audio-slider" id="audioSlider" min="0" max="100" value="30" title="音量">
-    <span class="audio-vol" id="audioVol">30%</span>
+    <input type="range" class="audio-slider" id="audioSlider" min="0" max="100" value="25" title="音量">
+    <span class="audio-vol" id="audioVol">25%</span>
   </div>
 </div>
 
@@ -590,7 +625,7 @@ function renderGallery(filter) {
           const meta = metaList.find(m => m.file === fileName);
           if (meta && meta.colors && meta.colors.length) bg = meta.colors[0].hex;
         }
-        html += `<div class="masonry-item" data-cat="${cat}" data-index="${i}" data-src="${src}" style="background:${bg}"><img class="masonry-img" src="${src}" alt="${cat}" loading="lazy"><div class="masonry-placeholder">${i+1}</div><div class="item-overlay"><span class="item-index">${i+1}</span></div><button class="del-btn" title="删除此图片">&times;</button></div>`;
+        html += `<div class="masonry-item" data-cat="${cat}" data-index="${i}" data-src="${src}" style="background:${bg}"><img class="masonry-img" src="${src}" alt="${cat}" loading="lazy" decoding="async"><div class="masonry-placeholder">${i+1}</div><div class="item-overlay"><span class="item-index">${i+1}</span></div><button class="del-btn" title="删除此图片">&times;</button></div>`;
       });
       html += '</div></div>';
     });
@@ -615,7 +650,7 @@ function renderGallery(filter) {
           const meta = metaList.find(m => m.file === fileName);
           if (meta && meta.colors && meta.colors.length) bg = meta.colors[0].hex;
         }
-        html += `<div class="masonry-item" data-cat="${cat}" data-index="${i}" data-src="${src}" style="background:${bg}"><img class="masonry-img" src="${src}" alt="${cat}" loading="lazy"><div class="masonry-placeholder">${i+1}</div><div class="item-overlay"><span class="item-index">${i+1}</span></div><button class="del-btn" title="删除此图片">&times;</button></div>`;
+        html += `<div class="masonry-item" data-cat="${cat}" data-index="${i}" data-src="${src}" style="background:${bg}"><img class="masonry-img" src="${src}" alt="${cat}" loading="lazy" decoding="async"><div class="masonry-placeholder">${i+1}</div><div class="item-overlay"><span class="item-index">${i+1}</span></div><button class="del-btn" title="删除此图片">&times;</button></div>`;
       });
       html += '</div></div>';
     });

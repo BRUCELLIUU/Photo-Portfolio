@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 from PIL import Image
 
 BASE = r"C:\Users\25055\Desktop\个人摄影作品筛选"
-CATS = ["风光","静物","人文"]
+CATS = ["风光","静物","人文","风格化"]
 OUT = os.path.join(BASE, "image_data.json")
 
 def extract_xmp_from_png(fpath):

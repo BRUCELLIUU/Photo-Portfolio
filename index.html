@@ -700,6 +700,7 @@ document.getElementById('categoryNav').addEventListener('click', e => {
   document.querySelectorAll('#categoryNav button').forEach(b => b.classList.remove('active'));
   e.target.classList.add('active');
   renderGallery(e.target.dataset.cat);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
 // ── Lightbox with dual-img crossfade ──

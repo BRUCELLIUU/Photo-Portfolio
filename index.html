@@ -400,15 +400,6 @@ body {
   font-size: 12px; color: var(--fg-dim); letter-spacing: 0.03em;
   min-width: 80px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.loading-toast {
-  position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%); z-index: 400;
-  background: rgba(8,8,8,0.88); backdrop-filter: blur(16px);
-  border: 1px solid rgba(201,169,110,0.2); border-radius: 24px;
-  padding: 10px 28px; font-size: 12px; color: var(--accent);
-  letter-spacing: 0.04em; white-space: nowrap; pointer-events: none;
-  opacity: 1; transition: opacity 0.5s ease;
-}
-.loading-toast.hidden { opacity: 0; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -543,8 +534,6 @@ body {
 </div>
 
 <footer class="site-footer"><p>&copy; 2026 摄影作品集 &middot; 光影之间</p></footer>
-
-<div class="loading-toast" id="loadingToast">正在加载中，如遇图片无法加载请刷新页面</div>
 
 <script src="image_meta.js"></script>
 <script>
@@ -1112,15 +1101,6 @@ verifyInput.addEventListener('keydown', e => {
 });
 
 renderGallery('all');
-
-// ── Loading toast: hide once page is ready ──
-(function() {
-  const toast = document.getElementById('loadingToast');
-  function hide() { toast.classList.add('hidden'); }
-  if (document.readyState === 'complete') { setTimeout(hide, 1200); }
-  else { window.addEventListener('load', () => setTimeout(hide, 1200)); }
-  setTimeout(hide, 8000); // absolute fallback
-})();
 
 // ── Particle effect ──
 (function() {
